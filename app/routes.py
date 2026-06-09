@@ -1,6 +1,4 @@
-from h11._abnf import status_code
 from fastapi.responses import RedirectResponse
-from multiprocessing.sharedctypes import Value
 from app.utils import encode_base62, decode_base62
 from app import config
 from fastapi import HTTPException
@@ -17,7 +15,7 @@ router = APIRouter()
 def health_check():
     return {"status":"ok", "message":"API is healthy"}
 
-@router.post("/api/v1/,shorten", response_model=URLResponse, tags=["URL Shortener"])
+@router.post("/api/v1/shorten", response_model=URLResponse, tags=["URL Shortener"])
 def shorten_url(request: URLRequest):    
     try:
         url_string = str(request.long_url)

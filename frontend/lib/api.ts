@@ -7,7 +7,7 @@ export interface ShortenResponse {
 }
 
 export async function shortenUrl(longUrl: string): Promise<ShortenResponse> {
-  const res = await fetch(`${API_URL}/api/v1/,shorten`, {
+  const res = await fetch(`${API_URL}/api/v1/shorten`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ long_url: longUrl }),
