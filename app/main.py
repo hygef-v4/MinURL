@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Khởi tạo app
 app = FastAPI(
-    title="WarpLink API", 
+    title="MinURL API", 
     description="Hệ thống URL Shortener tốc độ cao", 
     version="1.0.0"
 )
