@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } catch (err) {
-      console.error("Lỗi khi tải thông tin cá nhân:", err);
+      console.error("Failed to load profile:", err);
       setProfile(null);
     }
   }

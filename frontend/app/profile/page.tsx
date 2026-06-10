@@ -39,7 +39,7 @@ export default function ProfilePage() {
         .eq("user_id", user.id)
         .then(({ count, error }) => {
           if (error) {
-            console.error("Lỗi khi tải thống kê URL:", error);
+            console.error("Failed to load URL stats:", error);
           } else {
             setTotalUrls(count ?? 0);
           }
@@ -68,11 +68,11 @@ export default function ProfilePage() {
         .eq("id", user!.id);
 
       if (error) throw error;
-      setSuccessMsg("Cập nhật thông tin thành công!");
+      setSuccessMsg("Profile updated successfully!");
       await refreshProfile(); // Update navbar display name immediately
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Không thể cập nhật thông tin.");
+      setErrorMsg(err.message || "Unable to update profile.");
     } finally {
       setUpdating(false);
     }

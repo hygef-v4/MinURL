@@ -33,7 +33,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
           password,
         });
         if (error) throw error;
-        setSuccessMsg("Đăng nhập thành công!");
+        setSuccessMsg("Signed in successfully!");
         setTimeout(() => {
           onClose();
         }, 1000);
@@ -48,14 +48,14 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
           },
         });
         if (error) throw error;
-        setSuccessMsg("Đăng ký thành công! Vui lòng kiểm tra email xác nhận (nếu có) hoặc bắt đầu sử dụng.");
+        setSuccessMsg("Account created! Please check your email to confirm (if required), or start using MinURL.");
         setTimeout(() => {
           onClose();
         }, 2000);
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
+      setErrorMsg(err.message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
       if (error) throw error;
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Đăng nhập Google thất bại.");
+      setErrorMsg(err.message || "Google sign-in failed.");
       setLoading(false);
     }
   }

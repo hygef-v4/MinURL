@@ -8,6 +8,8 @@ import HistoryList from "@/components/HistoryList";
 import { ShortenResponse, fetchUserHistory } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import AuthModal from "@/components/AuthModal";
+import ColorfulTitle from "@/components/ColorfulTitle";
+
 
 const HISTORY_KEY = "minurl_history";
 const MAX_HISTORY = 10;
@@ -46,7 +48,7 @@ export default function HomePage() {
           setHistory(dbHistory);
         })
         .catch((err) => {
-          console.error("Lỗi khi tải lịch sử từ server:", err);
+          console.error("Failed to load history from server:", err);
           setHistory([]);
         });
     } else {
@@ -162,14 +164,15 @@ export default function HomePage() {
               </div>
 
               <h1 className="hero-title">
-                Shorten URLs,
+                <ColorfulTitle>Shorten URLs,</ColorfulTitle>
                 <br />
-                Build Branded Links & Track Clicks
+                <ColorfulTitle>Build Branded Links & Track Clicks</ColorfulTitle>
               </h1>
 
               <p className="hero-subtitle">
-                The minimalist link shortener — simplify the internet with
-                short, reliable, and blazing-fast links. No sign-up required.
+                <ColorfulTitle>The minimalist link shortener</ColorfulTitle>{" — "}
+                simplify the internet with short, reliable, and blazing-fast
+                links. No sign-up required.
               </p>
 
               <div className="hero-stats-row">
@@ -218,6 +221,7 @@ export default function HomePage() {
       </div>
 
       <AuthModal
+        key={authModalTab}
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         initialTab={authModalTab}

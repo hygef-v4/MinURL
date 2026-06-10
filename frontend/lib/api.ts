@@ -20,7 +20,7 @@ export async function shortenUrl(longUrl: string, token?: string): Promise<Short
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Không thể rút ngắn URL. Vui lòng thử lại.");
+    throw new Error(err.detail || "Failed to shorten URL. Please try again.");
   }
 
   return res.json();
@@ -37,7 +37,7 @@ export async function fetchUserHistory(token: string): Promise<ShortenResponse[]
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Không thể tải lịch sử URL.");
+    throw new Error(err.detail || "Failed to load URL history.");
   }
 
   return res.json();
