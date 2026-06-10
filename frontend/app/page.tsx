@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import UrlShortenerForm from "@/components/UrlShortenerForm";
 import HistoryList from "@/components/HistoryList";
-import { ShortenResponse } from "@/lib/api";
+import { ShortenResponse, fetchUserHistory } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 const HISTORY_KEY = "minurl_history";
 const MAX_HISTORY = 10;
@@ -29,10 +31,26 @@ function saveHistory(history: ShortenResponse[]) {
 
 export default function HomePage() {
   const [history, setHistory] = useState<ShortenResponse[]>([]);
+  const { user, session, profile, loading: authLoading, signOut } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
 
   useEffect(() => {
-    setHistory(loadHistory());
-  }, []);
+    if (authLoading) return;
+
+    if (session?.access_token) {
+      fetchUserHistory(session.access_token)
+        .then((dbHistory) => {
+          setHistory(dbHistory);
+        })
+        .catch((err) => {
+          console.error("Lỗi khi tải lịch sử từ server:", err);
+          setHistory([]);
+        });
+    } else {
+      setHistory(loadHistory());
+    }
+  }, [user, session, authLoading]);
 
   function handleSuccess(newResult: ShortenResponse) {
     setHistory((prev) => {
@@ -40,14 +58,18 @@ export default function HomePage() {
         (h) => h.short_code !== newResult.short_code,
       );
       const next = [newResult, ...filtered].slice(0, MAX_HISTORY);
-      saveHistory(next);
+      if (!user) {
+        saveHistory(next);
+      }
       return next;
     });
   }
 
   function handleClearHistory() {
     setHistory([]);
-    localStorage.removeItem(HISTORY_KEY);
+    if (!user) {
+      localStorage.removeItem(HISTORY_KEY);
+    }
   }
 
   return (
@@ -76,8 +98,37 @@ export default function HomePage() {
         </a>
 
         <div className="navbar-actions">
-          <button className="navbar-btn-text">Sign In</button>
-          <button className="navbar-btn-solid">Get Started Free</button>
+          {authLoading ? (
+            <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>Loading...</span>
+          ) : user ? (
+            <div className="user-profile-nav" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <span className="user-display-name" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+                {profile?.display_name || user.email}
+              </span>
+              <button className="navbar-btn-text" onClick={signOut}>Sign Out</button>
+            </div>
+          ) : (
+            <>
+              <button
+                className="navbar-btn-text"
+                onClick={() => {
+                  setAuthModalTab("signin");
+                  setIsAuthModalOpen(true);
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                className="navbar-btn-solid"
+                onClick={() => {
+                  setAuthModalTab("signup");
+                  setIsAuthModalOpen(true);
+                }}
+              >
+                Get Started Free
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -147,6 +198,12 @@ export default function HomePage() {
           </p>
         </footer>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialTab={authModalTab}
+      />
     </>
   );
 }

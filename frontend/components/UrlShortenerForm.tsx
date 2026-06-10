@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
 import { shortenUrl, ShortenResponse } from "@/lib/api";
 import QrCodePanel from "./QrCodePanel";
+import { useAuth } from "@/lib/AuthContext";
 
 interface Props {
   onSuccess: (result: ShortenResponse) => void;
@@ -19,6 +20,7 @@ function isValidUrl(url: string): boolean {
 }
 
 export default function UrlShortenerForm({ onSuccess }: Props) {
+  const { session } = useAuth();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +70,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
 
     setLoading(true);
     try {
-      const res = await shortenUrl(trimmed);
+      const res = await shortenUrl(trimmed, session?.access_token);
       setResult(res);
       onSuccess(res);
     } catch (err) {
