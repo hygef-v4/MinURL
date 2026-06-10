@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import UrlShortenerForm from "@/components/UrlShortenerForm";
 import HistoryList from "@/components/HistoryList";
@@ -34,6 +35,7 @@ export default function HomePage() {
   const { user, session, profile, loading: authLoading, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
+  const router = useRouter();
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,16 +55,28 @@ export default function HomePage() {
   }, [user, session, authLoading]);
 
   function handleSuccess(newResult: ShortenResponse) {
-    setHistory((prev) => {
-      const filtered = prev.filter(
-        (h) => h.short_code !== newResult.short_code,
-      );
-      const next = [newResult, ...filtered].slice(0, MAX_HISTORY);
-      if (!user) {
+    if (user && session?.access_token) {
+      // Logged in: refresh from DB to ensure persistence
+      fetchUserHistory(session.access_token)
+        .then((dbHistory) => setHistory(dbHistory))
+        .catch(() => {
+          // Fallback to local prepend
+          setHistory((prev) => {
+            const filtered = prev.filter((h) => h.short_code !== newResult.short_code);
+            return [newResult, ...filtered].slice(0, MAX_HISTORY);
+          });
+        });
+    } else {
+      // Guest: use localStorage
+      setHistory((prev) => {
+        const filtered = prev.filter(
+          (h) => h.short_code !== newResult.short_code,
+        );
+        const next = [newResult, ...filtered].slice(0, MAX_HISTORY);
         saveHistory(next);
-      }
-      return next;
-    });
+        return next;
+      });
+    }
   }
 
   function handleClearHistory() {
@@ -102,9 +116,13 @@ export default function HomePage() {
             <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>Loading...</span>
           ) : user ? (
             <div className="user-profile-nav" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <span className="user-display-name" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+              <button
+                className="navbar-btn-text"
+                onClick={() => router.push("/profile")}
+                style={{ fontWeight: 600, color: "var(--accent-primary)", padding: 0 }}
+              >
                 {profile?.display_name || user.email}
-              </span>
+              </button>
               <button className="navbar-btn-text" onClick={signOut}>Sign Out</button>
             </div>
           ) : (

@@ -217,7 +217,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
         </form>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .auth-overlay {
           position: fixed;
           inset: 0;
