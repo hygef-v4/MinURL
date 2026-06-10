@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import QRCode from "qrcode";
 import { shortenUrl, ShortenResponse } from "@/lib/api";
+import QrCodePanel from "./QrCodePanel";
 
 interface Props {
   onSuccess: (result: ShortenResponse) => void;
@@ -24,6 +26,31 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [activeTab, setActiveTab] = useState<"shorten" | "qr">("shorten");
+  const inlineCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const renderInlineQr = useCallback(async (shortUrl: string) => {
+    if (!inlineCanvasRef.current) return;
+    await QRCode.toCanvas(inlineCanvasRef.current, shortUrl, {
+      width: 128,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#7c3aed", light: "#ffffff" },
+    });
+  }, []);
+
+  useEffect(() => {
+    if (result?.short_url) {
+      renderInlineQr(result.short_url);
+    }
+  }, [result, renderInlineQr]);
+
+  function handleDownloadQr() {
+    if (!inlineCanvasRef.current) return;
+    const link = document.createElement("a");
+    link.download = "minurl-qrcode.png";
+    link.href = inlineCanvasRef.current.toDataURL("image/png");
+    link.click();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -148,9 +175,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
       </div>
 
       {activeTab === "qr" ? (
-        <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-secondary)" }}>
-          <p style={{ fontSize: "14px", fontWeight: 500 }}>QR Code generation coming soon!</p>
-        </div>
+        <QrCodePanel defaultUrl={result?.short_url ?? ""} />
       ) : (
         <form onSubmit={result ? (e) => e.preventDefault() : handleSubmit} noValidate>
           {/* Long URL Input */}
@@ -312,6 +337,94 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                     </>
                   )}
                 </button>
+              </div>
+
+              {/* Inline QR Code preview */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "20px",
+                  padding: "16px",
+                  background: "var(--accent-glow-soft)",
+                  border: "1px solid rgba(124, 58, 237, 0.12)",
+                  borderRadius: "var(--radius-md)",
+                  animation: "result-appear 0.5s 0.15s var(--transition-base) both",
+                }}
+              >
+                {/* Canvas */}
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: "10px",
+                    padding: "6px",
+                    flexShrink: 0,
+                    boxShadow: "0 2px 8px rgba(124,58,237,0.10)",
+                  }}
+                >
+                  <canvas
+                    ref={inlineCanvasRef}
+                    style={{ display: "block", borderRadius: "6px" }}
+                  />
+                </div>
+
+                {/* Right side text + download */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "var(--text-primary)",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    QR Code
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--text-muted)",
+                      marginBottom: "12px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Scan to open your short link on any device.
+                  </p>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      id="inline-download-qr-png"
+                      type="button"
+                      className="inline-action-btn"
+                      onClick={handleDownloadQr}
+                      style={{ height: "36px", padding: "0 14px", fontSize: "12px" }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" x2="12" y1="15" y2="3" />
+                      </svg>
+                      Download PNG
+                    </button>
+                    <button
+                      id="inline-open-qr-tab"
+                      type="button"
+                      className="inline-action-btn"
+                      onClick={() => setActiveTab("qr")}
+                      style={{ height: "36px", padding: "0 14px", fontSize: "12px" }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="5" height="5" x="3" y="3" rx="1" />
+                        <rect width="5" height="5" x="16" y="3" rx="1" />
+                        <rect width="5" height="5" x="3" y="16" rx="1" />
+                        <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                        <path d="M21 21v.01" />
+                        <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+                        <path d="M12 12v.01" />
+                      </svg>
+                      Customize
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
