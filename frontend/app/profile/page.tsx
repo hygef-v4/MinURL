@@ -16,6 +16,13 @@ export default function ProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Change Password States
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [pwUpdating, setPwUpdating] = useState(false);
+  const [pwErrorMsg, setPwErrorMsg] = useState("");
+  const [pwSuccessMsg, setPwSuccessMsg] = useState("");
+
   // Redirect if guest
   useEffect(() => {
     if (!authLoading && !user) {
@@ -75,6 +82,41 @@ export default function ProfilePage() {
       setErrorMsg(err.message || "Unable to update profile.");
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwUpdating(true);
+    setPwErrorMsg("");
+    setPwSuccessMsg("");
+
+    if (newPassword.length < 6) {
+      setPwErrorMsg("Password must be at least 6 characters.");
+      setPwUpdating(false);
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPwErrorMsg("Passwords do not match.");
+      setPwUpdating(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+      setPwSuccessMsg("Password updated successfully!");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (err: any) {
+      console.error(err);
+      setPwErrorMsg(err.message || "Failed to update password.");
+    } finally {
+      setPwUpdating(false);
     }
   }
 
@@ -161,6 +203,49 @@ export default function ProfilePage() {
                 onClick={async () => { await signOut(); router.push("/"); }}
               >
                 Sign Out
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Change Password Card */}
+        <div className="glass-card" style={{ maxWidth: "550px", margin: "24px auto 0", animation: "fade-up 0.5s both" }}>
+          <div className="profile-header">
+            <h2>Change Password</h2>
+            <p>Update your account password. Must be at least 6 characters.</p>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="profile-form">
+            <div className="form-group">
+              <label htmlFor="newPassword">New Password</label>
+              <input
+                id="newPassword"
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmNewPassword">Confirm New Password</label>
+              <input
+                id="confirmNewPassword"
+                type="password"
+                required
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+
+            {pwErrorMsg && <div className="alert-message error">{pwErrorMsg}</div>}
+            {pwSuccessMsg && <div className="alert-message success">{pwSuccessMsg}</div>}
+
+            <div className="form-actions">
+              <button type="submit" className="save-btn" disabled={pwUpdating}>
+                {pwUpdating ? "Updating Password..." : "Update Password"}
               </button>
             </div>
           </form>
