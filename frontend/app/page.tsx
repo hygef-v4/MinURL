@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence } from "framer-motion";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import UrlShortenerForm from "@/components/UrlShortenerForm";
 import HistoryList from "@/components/HistoryList";
@@ -220,12 +221,16 @@ export default function HomePage() {
         </footer>
       </div>
 
-      <AuthModal
-        key={authModalTab}
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialTab={authModalTab}
-      />
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <AuthModal
+            key="auth-modal"
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            initialTab={authModalTab}
+          />
+        )}
+      </AnimatePresence>
       
     </>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import QRCode from "qrcode";
+import { motion } from "framer-motion";
 
 interface Props {
   /** Pre-fill URL (e.g. the short URL just generated) */
@@ -201,10 +202,12 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
             </label>
             <div style={{ display: "flex", gap: "6px" }}>
               {SIZES.map((s) => (
-                <button
+                <motion.button
                   key={s.value}
                   type="button"
                   onClick={() => setSize(s.value)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   style={{
                     flex: 1,
                     height: "36px",
@@ -226,7 +229,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                   }}
                 >
                   {s.label}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -238,11 +241,13 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
             </label>
             <div style={{ display: "flex", gap: "6px" }}>
               {ERROR_LEVELS.map((el) => (
-                <button
+                <motion.button
                   key={el.value}
                   type="button"
                   title={el.desc}
                   onClick={() => setErrorLevel(el.value)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   style={{
                     flex: 1,
                     height: "36px",
@@ -264,7 +269,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                   }}
                 >
                   {el.label}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -277,11 +282,13 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
           </label>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             {["#7c3aed", "#0f172a", "#1d4ed8", "#059669", "#dc2626", "#d97706"].map((c) => (
-              <button
+              <motion.button
                 key={c}
                 type="button"
                 title={c}
                 onClick={() => setDarkColor(c)}
+                whileHover={{ scale: 1.18 }}
+                whileTap={{ scale: 0.9 }}
                 style={{
                   width: "28px",
                   height: "28px",
@@ -342,12 +349,14 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
         {hasValidQr ? (
           <>
             {/* Canvas wrapper with animated border */}
-            <div
+            <motion.div
               style={{
                 position: "relative",
                 display: "inline-block",
-                animation: "result-appear 0.4s var(--transition-base) both",
               }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
             >
               <div
                 style={{
@@ -368,7 +377,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                   }}
                 />
               </div>
-            </div>
+            </motion.div>
 
             {/* URL label below QR */}
             <p
@@ -387,12 +396,14 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
 
             {/* Download buttons */}
             <div className="qr-download-buttons">
-              <button
+              <motion.button
                 id="download-qr-png"
                 type="button"
                 className="inline-action-btn"
                 onClick={handleDownloadPng}
                 style={{ height: "44px", width: "100%" }}
+                whileHover={{ scale: 1.02, translateY: -1 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -410,13 +421,15 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                   <line x1="12" x2="12" y1="15" y2="3" />
                 </svg>
                 Download PNG
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 id="download-qr-svg"
                 type="button"
                 className="inline-action-btn"
                 onClick={handleDownloadSvg}
                 style={{ height: "44px", width: "100%" }}
+                whileHover={{ scale: 1.02, translateY: -1 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -434,7 +447,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                   <line x1="12" x2="12" y1="15" y2="3" />
                 </svg>
                 Download SVG
-              </button>
+              </motion.button>
             </div>
           </>
         ) : (

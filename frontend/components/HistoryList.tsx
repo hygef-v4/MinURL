@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ShortenResponse } from "@/lib/api";
 
 interface Props {
@@ -12,6 +13,25 @@ export default function HistoryList({ history, onClear }: Props) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [sharedCode, setSharedCode] = useState<string | null>(null);
   const [activeQrCode, setActiveQrCode] = useState<string | null>(null);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.04
+      }
+    }
+  } as const;
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { type: "spring", stiffness: 260, damping: 22 }
+    }
+  } as const;
 
   if (history.length === 0) return null;
 
@@ -90,20 +110,28 @@ export default function HistoryList({ history, onClear }: Props) {
         </button>
       </div>
 
-      <ul className="history-list" role="list" style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "12px" }}>
+      <motion.ul
+        className="history-list"
+        role="list"
+        style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "12px" }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         {history.map((item, idx) => (
-          <li key={item.short_code} style={{ animationDelay: `${idx * 0.05}s` }}>
-            <div 
+          <motion.li key={item.short_code} variants={itemVariants}>
+            <motion.div 
               style={{
                 display: "flex",
                 flexDirection: "column",
                 background: "var(--bg-secondary)",
                 border: "1px solid var(--border-subtle)",
                 borderRadius: "var(--radius-md)",
-                overflow: "hidden",
-                transition: "border-color var(--transition-fast)"
+                overflow: "hidden"
               }}
               className="recent-link-wrapper"
+              whileHover={{ y: -2, boxShadow: "0 8px 16px -4px rgba(15, 23, 42, 0.06)", borderColor: "var(--border-accent)" }}
+              transition={{ duration: 0.2 }}
             >
               <div className="recent-link-row" id={`history-item-${item.short_code}`} style={{ border: "none" }}>
                 <div className="recent-link-left">
@@ -142,14 +170,16 @@ export default function HistoryList({ history, onClear }: Props) {
                 </div>
 
                 {/* Actions toolbar */}
-                <div className="recent-link-actions">
-                  <a
+                 <div className="recent-link-actions">
+                  <motion.a
                     href={item.short_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-action-btn"
                     style={{ textDecoration: "none", height: "36px", padding: "0 12px" }}
                     title="Visit link"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M15 3h6v6" />
@@ -157,14 +187,16 @@ export default function HistoryList({ history, onClear }: Props) {
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                     </svg>
                     <span>Visit</span>
-                  </a>
+                  </motion.a>
 
-                  <button
+                  <motion.button
                     type="button"
                     className="inline-action-btn"
                     onClick={() => setActiveQrCode(prev => prev === item.short_code ? null : item.short_code)}
                     style={{ height: "36px", padding: "0 12px" }}
                     title="QR Code"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="3" width="7" height="7" />
@@ -173,14 +205,16 @@ export default function HistoryList({ history, onClear }: Props) {
                       <rect x="3" y="14" width="7" height="7" />
                     </svg>
                     <span>QR Code</span>
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     type="button"
                     className={`inline-action-btn${sharedCode === item.short_code ? " active-success" : ""}`}
                     onClick={(e) => handleShare(item, e)}
                     style={{ height: "36px", padding: "0 12px" }}
                     title="Share link"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     {sharedCode === item.short_code ? (
                       <>
@@ -201,14 +235,16 @@ export default function HistoryList({ history, onClear }: Props) {
                         <span>Share</span>
                       </>
                     )}
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     type="button"
                     className={`inline-action-btn${copiedCode === item.short_code ? " active-success" : ""}`}
                     onClick={(e) => handleCopy(item, e)}
                     style={{ height: "36px", padding: "0 12px" }}
                     title="Copy link"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     {copiedCode === item.short_code ? (
                       <>
@@ -226,51 +262,57 @@ export default function HistoryList({ history, onClear }: Props) {
                         <span>Copy</span>
                       </>
                     )}
-                  </button>
+                  </motion.button>
                 </div>
               </div>
 
-              {activeQrCode === item.short_code && (
-                <div 
-                  className="recent-link-qr-panel"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "20px",
-                    padding: "16px 24px",
-                    borderTop: "1px dashed var(--border-subtle)",
-                    background: "rgba(124, 58, 237, 0.02)",
-                    animation: "slideDown 0.25s ease-out"
-                  }}
-                >
-                  <canvas 
-                    id={`qr-${item.short_code}`} 
-                    ref={(el) => renderQrCanvas(el, item.short_url)}
+               <AnimatePresence>
+                {activeQrCode === item.short_code && (
+                  <motion.div 
+                    className="recent-link-qr-panel"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
                     style={{
-                      borderRadius: "6px",
-                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "20px",
+                      padding: "16px 24px",
+                      borderTop: "1px dashed var(--border-subtle)",
+                      background: "rgba(124, 58, 237, 0.02)",
+                      overflow: "hidden"
                     }}
-                  />
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <h4 style={{ fontSize: "14px", fontWeight: 750, color: "var(--text-primary)" }}>QR Code Preview</h4>
-                    <p style={{ fontSize: "12px", color: "var(--text-muted)", maxWidth: "300px" }}>
-                      Scan this code with a mobile camera to access your shortened URL directly.
-                    </p>
-                    <button
-                      type="button"
-                      className="navbar-btn-solid"
-                      onClick={() => handleDownloadQr(item.short_code)}
-                      style={{ height: "32px", fontSize: "12px", padding: "0 12px", width: "fit-content", marginTop: "4px" }}
-                    >
-                      Download PNG
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </li>
+                  >
+                    <canvas 
+                      id={`qr-${item.short_code}`} 
+                      ref={(el) => renderQrCanvas(el, item.short_url)}
+                      style={{
+                        borderRadius: "6px",
+                        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+                      }}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <h4 style={{ fontSize: "14px", fontWeight: 750, color: "var(--text-primary)" }}>QR Code Preview</h4>
+                      <p style={{ fontSize: "12px", color: "var(--text-muted)", maxWidth: "300px" }}>
+                        Scan this code with a mobile camera to access your shortened URL directly.
+                      </p>
+                      <button
+                        type="button"
+                        className="navbar-btn-solid"
+                        onClick={() => handleDownloadQr(item.short_code)}
+                        style={{ height: "32px", fontSize: "12px", padding: "0 12px", width: "fit-content", marginTop: "4px" }}
+                      >
+                        Download PNG
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </motion.li>
         ))}
-      </ul>
+      </motion.ul>
 
       <style>{`
         @keyframes slideDown {

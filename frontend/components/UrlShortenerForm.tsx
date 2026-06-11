@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
+import { motion, AnimatePresence } from "framer-motion";
 import { shortenUrl, ShortenResponse } from "@/lib/api";
 import QrCodePanel from "./QrCodePanel";
 import { useAuth } from "@/lib/AuthContext";
@@ -125,13 +126,19 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
   }
 
   return (
-    <div className="glass-card" style={{ animationDelay: "0.2s", animation: "fade-up 0.6s 0.2s both" }}>
+    <motion.div
+      className="glass-card"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+    >
       {/* Tabs */}
       <div className="card-tabs">
-        <button
+        <motion.button
           type="button"
           className={`card-tab${activeTab === "shorten" ? " active" : ""}`}
           onClick={() => setActiveTab("shorten")}
+          style={{ position: "relative", borderBottom: activeTab === "shorten" ? "none" : undefined }}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -147,11 +154,25 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
             <path d="m9 18 6-6-6-6" />
           </svg>
           Shorten Link
-        </button>
-        <button
+          {activeTab === "shorten" && (
+            <motion.div
+              layoutId="active-tab-indicator"
+              style={{
+                position: "absolute",
+                bottom: -1,
+                left: 0,
+                right: 0,
+                height: "2px",
+                background: "var(--accent-primary)",
+              }}
+            />
+          )}
+        </motion.button>
+        <motion.button
           type="button"
           className={`card-tab${activeTab === "qr" ? " active" : ""}`}
           onClick={() => setActiveTab("qr")}
+          style={{ position: "relative", borderBottom: activeTab === "qr" ? "none" : undefined }}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -173,7 +194,20 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
             <path d="M12 12v.01" />
           </svg>
           QR Code
-        </button>
+          {activeTab === "qr" && (
+            <motion.div
+              layoutId="active-tab-indicator"
+              style={{
+                position: "absolute",
+                bottom: -1,
+                left: 0,
+                right: 0,
+                height: "2px",
+                background: "var(--accent-primary)",
+              }}
+            />
+          )}
+        </motion.button>
       </div>
 
       {activeTab === "qr" ? (
@@ -218,8 +252,25 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
           </div>
 
           {/* Short URL Result Input */}
-          {result && (
-            <div style={{ marginBottom: "20px", animation: "result-appear 0.4s var(--transition-base) both" }}>
+          <AnimatePresence>
+            {result && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95, overflow: "hidden" }}
+                animate={{ 
+                  opacity: 1, 
+                  height: "auto", 
+                  scale: 1,
+                  transitionEnd: { overflow: "visible" }
+                }}
+                exit={{ 
+                  opacity: 0, 
+                  height: 0, 
+                  scale: 0.95,
+                  overflow: "hidden"
+                }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                style={{ marginBottom: "20px" }}
+              >
               <label htmlFor="short-url-output" className="form-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -278,12 +329,14 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
 
               {/* Action Toolbar buttons */}
               <div className="inline-actions-grid">
-                <a
+                <motion.a
                   href={result.short_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-action-btn"
                   style={{ textDecoration: "none" }}
+                  whileHover={{ scale: 1.03, translateY: -1 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M15 3h6v6" />
@@ -291,11 +344,13 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                   </svg>
                   Visit
-                </a>
-                <button
+                </motion.a>
+                <motion.button
                   type="button"
                   className={`inline-action-btn${shared ? " active-success" : ""}`}
                   onClick={handleShare}
+                  whileHover={{ scale: 1.03, translateY: -1 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   {shared ? (
                     <>
@@ -316,11 +371,13 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                       Share
                     </>
                   )}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
                   className={`inline-action-btn${copied ? " active-success" : ""}`}
                   onClick={handleCopy}
+                  whileHover={{ scale: 1.03, translateY: -1 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   {copied ? (
                     <>
@@ -338,7 +395,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                       Copy
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
 
               {/* Inline QR Code preview */}
@@ -417,8 +474,9 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Error Message */}
           {error && (
@@ -429,22 +487,26 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
 
           {/* Action Button */}
           {result ? (
-            <button
+            <motion.button
               type="button"
               className="submit-btn action-btn-primary-green"
               onClick={handleReset}
               style={{ width: "100%", height: "54px" }}
+              whileHover={{ scale: 1.015, translateY: -1 }}
+              whileTap={{ scale: 0.985 }}
             >
               Shorten another link
-            </button>
+            </motion.button>
           ) : (
-            <button
+            <motion.button
               id="shorten-btn"
               type="submit"
               className="submit-btn"
               disabled={loading}
               aria-label="Shorten URL"
               style={{ width: "100%", height: "54px" }}
+              whileHover={{ scale: 1.015, translateY: -1 }}
+              whileTap={{ scale: 0.985 }}
             >
               {loading ? (
                 <span className="spinner" />
@@ -470,10 +532,10 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
                   <span>Shorten URL</span>
                 </>
               )}
-            </button>
+            </motion.button>
           )}
         </form>
       )}
-    </div>
+    </motion.div>
   );
 }

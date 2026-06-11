@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 
 interface AuthModalProps {
@@ -18,7 +19,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  if (!isOpen) return null;
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,10 +81,30 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
   }
 
   return (
-    <div className="auth-overlay" onClick={onClose}>
-      <div className="auth-modal-card" onClick={(e) => e.stopPropagation()}>
+    <motion.div
+      className="auth-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="auth-modal-card"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
         {/* Close Button */}
-        <button className="auth-close-btn" onClick={onClose} aria-label="Close modal">
+        <motion.button
+          className="auth-close-btn"
+          onClick={onClose}
+          aria-label="Close modal"
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -98,7 +119,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
-        </button>
+        </motion.button>
 
         {/* Brand Header */}
         <div className="auth-header">
@@ -122,26 +143,30 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
 
         {/* Tabs */}
         <div className="auth-tabs">
-          <button
+          <motion.button
             className={`auth-tab-btn ${tab === "signin" ? "active" : ""}`}
             onClick={() => {
               setTab("signin");
               setErrorMsg("");
               setSuccessMsg("");
             }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             Sign In
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             className={`auth-tab-btn ${tab === "signup" ? "active" : ""}`}
             onClick={() => {
               setTab("signup");
               setErrorMsg("");
               setSuccessMsg("");
             }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             Sign Up
-          </button>
+          </motion.button>
         </div>
 
         {/* Form */}
@@ -183,10 +208,17 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
             />
           </div>
 
+
           {errorMsg && <div className="auth-alert error">{errorMsg}</div>}
           {successMsg && <div className="auth-alert success">{successMsg}</div>}
 
-          <button type="submit" className="auth-submit-btn" disabled={loading}>
+          <motion.button
+            type="submit"
+            className="auth-submit-btn"
+            disabled={loading}
+            whileHover={{ scale: 1.02, translateY: -1 }}
+            whileTap={{ scale: 0.98 }}
+          >
             {loading ? (
               <span className="auth-spinner" />
             ) : tab === "signin" ? (
@@ -194,17 +226,19 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
             ) : (
               "Create Account"
             )}
-          </button>
+          </motion.button>
 
           <div className="auth-divider">
             <span>or</span>
           </div>
 
-          <button
+          <motion.button
             type="button"
             className="auth-google-btn"
             onClick={handleGoogleLogin}
             disabled={loading}
+            whileHover={{ scale: 1.02, translateY: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.7-.2-2.5H12v4.8h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3.1h3.9c2.3-2.1 3.6-5.2 3.6-9.1z"/>
@@ -213,9 +247,9 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
               <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.1 0 12 0 7.3 0 3.2 2.7 1.2 6.8l4 3.1c1-2.9 3.6-5.1 6.8-5.1z"/>
             </svg>
             Continue with Google
-          </button>
+          </motion.button>
         </form>
-      </div>
+      </motion.div>
 
       <style>{`
         .auth-overlay {
@@ -483,6 +517,6 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
           }
         }
       `}</style>
-    </div>
+    </motion.div>
   );
 }
