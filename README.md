@@ -3,8 +3,11 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20App-FF5722?style=for-the-badge&logo=vercel&logoColor=white)](https://minurl-app.vercel.app)
 
 **MinURL** is a fast, lightweight, and modern URL shortener web application. It features a stunning glassmorphism user interface and is built using **FastAPI (Python)** for the backend, **Next.js (TypeScript) + CSS** for the frontend, and **Supabase** for the database and authentication.
+
+🔗 **Live Demo**: [https://minurl-app.vercel.app](https://minurl-app.vercel.app)
 
 ---
 
