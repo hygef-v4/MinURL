@@ -7,11 +7,11 @@ import { supabase } from "@/lib/supabase";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: "signin" | "signup";
+  initialTab?: "signin" | "signup" | "forgot";
 }
 
 export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: AuthModalProps) {
-  const [tab, setTab] = useState<"signin" | "signup">(initialTab);
+  const [tab, setTab] = useState<"signin" | "signup" | "forgot">(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -38,7 +38,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
         setTimeout(() => {
           onClose();
         }, 1000);
-      } else {
+      } else if (tab === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -53,6 +53,12 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
         setTimeout(() => {
           onClose();
         }, 2000);
+      } else if (tab === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setSuccessMsg("Password reset email sent! Please check your inbox.");
       }
     } catch (err: any) {
       console.error(err);
@@ -142,32 +148,41 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
         </div>
 
         {/* Tabs */}
-        <div className="auth-tabs">
-          <motion.button
-            className={`auth-tab-btn ${tab === "signin" ? "active" : ""}`}
-            onClick={() => {
-              setTab("signin");
-              setErrorMsg("");
-              setSuccessMsg("");
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Sign In
-          </motion.button>
-          <motion.button
-            className={`auth-tab-btn ${tab === "signup" ? "active" : ""}`}
-            onClick={() => {
-              setTab("signup");
-              setErrorMsg("");
-              setSuccessMsg("");
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Sign Up
-          </motion.button>
-        </div>
+        {tab === "forgot" ? (
+          <div style={{ marginBottom: "20px", textAlign: "center" }}>
+            <h4 style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, margin: 0 }}>Reset Password</h4>
+            <p style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "6px", marginBottom: 0, lineScale: 1.4 }}>
+              Enter your email address and we'll send you a recovery link.
+            </p>
+          </div>
+        ) : (
+          <div className="auth-tabs">
+            <motion.button
+              className={`auth-tab-btn ${tab === "signin" ? "active" : ""}`}
+              onClick={() => {
+                setTab("signin");
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Sign In
+            </motion.button>
+            <motion.button
+              className={`auth-tab-btn ${tab === "signup" ? "active" : ""}`}
+              onClick={() => {
+                setTab("signup");
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Sign Up
+            </motion.button>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="auth-form">
@@ -196,18 +211,46 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
             />
           </div>
 
-          <div className="auth-field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
+          {tab !== "forgot" && (
+            <div className="auth-field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+          )}
 
+          {tab === "signin" && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-6px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("forgot");
+                  setErrorMsg("");
+                  setSuccessMsg("");
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent-primary)",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  padding: 0,
+                  transition: "opacity 0.2s"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.opacity = "0.8")}
+                onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {errorMsg && <div className="auth-alert error">{errorMsg}</div>}
           {successMsg && <div className="auth-alert success">{successMsg}</div>}
@@ -223,31 +266,52 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
               <span className="auth-spinner" />
             ) : tab === "signin" ? (
               "Sign In"
-            ) : (
+            ) : tab === "signup" ? (
               "Create Account"
+            ) : (
+              "Send Reset Link"
             )}
           </motion.button>
 
-          <div className="auth-divider">
-            <span>or</span>
-          </div>
+          {tab === "forgot" ? (
+            <motion.button
+              type="button"
+              className="auth-google-btn"
+              onClick={() => {
+                setTab("signin");
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+              style={{ marginTop: "8px", background: "transparent", color: "var(--accent-primary)" }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Back to Sign In
+            </motion.button>
+          ) : (
+            <>
+              <div className="auth-divider">
+                <span>or</span>
+              </div>
 
-          <motion.button
-            type="button"
-            className="auth-google-btn"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            whileHover={{ scale: 1.02, translateY: -1 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.7-.2-2.5H12v4.8h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3.1h3.9c2.3-2.1 3.6-5.2 3.6-9.1z"/>
-              <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3.1c-1.1.7-2.5 1.2-4.1 1.2-3.2 0-5.8-2.1-6.8-5H1.2v3.1C3.2 21.3 7.3 24 12 24z"/>
-              <path fill="#FBBC05" d="M5.2 14.2c-.3-.8-.4-1.7-.4-2.6s.1-1.8.4-2.6V5.9H1.2C.4 7.5 0 9.7 0 12s.4 4.5 1.2 6.1l4-3.1z"/>
-              <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.1 0 12 0 7.3 0 3.2 2.7 1.2 6.8l4 3.1c1-2.9 3.6-5.1 6.8-5.1z"/>
-            </svg>
-            Continue with Google
-          </motion.button>
+              <motion.button
+                type="button"
+                className="auth-google-btn"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                whileHover={{ scale: 1.02, translateY: -1 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.7-.2-2.5H12v4.8h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3.1h3.9c2.3-2.1 3.6-5.2 3.6-9.1z"/>
+                  <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3.1c-1.1.7-2.5 1.2-4.1 1.2-3.2 0-5.8-2.1-6.8-5H1.2v3.1C3.2 21.3 7.3 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.2 14.2c-.3-.8-.4-1.7-.4-2.6s.1-1.8.4-2.6V5.9H1.2C.4 7.5 0 9.7 0 12s.4 4.5 1.2 6.1l4-3.1z"/>
+                  <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C17.9 1.2 15.1 0 12 0 7.3 0 3.2 2.7 1.2 6.8l4 3.1c1-2.9 3.6-5.1 6.8-5.1z"/>
+                </svg>
+                Continue with Google
+              </motion.button>
+            </>
+          )}
         </form>
       </motion.div>
 
