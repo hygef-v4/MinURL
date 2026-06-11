@@ -64,10 +64,18 @@ export default function ColorfulTitle({
   children: string;
   className?: string;
 }) {
+  const words = children.split(" ");
   return (
     <span className={className} style={{ display: "inline" }}>
-      {children.split("").map((char, i) => (
-        <Letter key={i} char={char} />
+      {words.map((word, wordIndex) => (
+        <span key={wordIndex} style={{ display: "inline" }}>
+          <span style={{ display: "inline-block", whiteSpace: "nowrap" }}>
+            {word.split("").map((char, charIndex) => (
+              <Letter key={charIndex} char={char} />
+            ))}
+          </span>
+          {wordIndex < words.length - 1 && " "}
+        </span>
       ))}
     </span>
   );

@@ -157,7 +157,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
             </svg>
             URL to encode
           </label>
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div className="input-wrapper">
             <input
               id="qr-url-input"
               type="url"
@@ -170,13 +170,13 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
               placeholder="https://example.com or your MinURL short link..."
               autoComplete="off"
               spellCheck={false}
-              style={{ flex: 1 }}
+              style={{ flex: 1, width: "100%" }}
             />
             <button
               id="generate-qr-btn"
               type="submit"
               className="submit-btn"
-              style={{ height: "54px", padding: "0 20px", flexShrink: 0 }}
+              style={{ height: "54px", padding: "0 20px" }}
             >
               Generate
             </button>
@@ -193,14 +193,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
         </div>
 
         {/* Options row */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-            marginBottom: "20px",
-          }}
-        >
+        <div className="qr-options-grid">
           {/* Size picker */}
           <div>
             <label className="form-label" style={{ marginBottom: "8px" }}>
@@ -282,7 +275,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
           <label className="form-label" style={{ marginBottom: "8px" }}>
             QR Color
           </label>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             {["#7c3aed", "#0f172a", "#1d4ed8", "#059669", "#dc2626", "#d97706"].map((c) => (
               <button
                 key={c}
@@ -393,21 +386,13 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
             </p>
 
             {/* Download buttons */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px",
-                width: "100%",
-                maxWidth: "320px",
-              }}
-            >
+            <div className="qr-download-buttons">
               <button
                 id="download-qr-png"
                 type="button"
                 className="inline-action-btn"
                 onClick={handleDownloadPng}
-                style={{ height: "44px" }}
+                style={{ height: "44px", width: "100%" }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -431,7 +416,7 @@ export default function QrCodePanel({ defaultUrl = "" }: Props) {
                 type="button"
                 className="inline-action-btn"
                 onClick={handleDownloadSvg}
-                style={{ height: "44px" }}
+                style={{ height: "44px", width: "100%" }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

@@ -226,6 +226,7 @@ export default function HomePage() {
         onClose={() => setIsAuthModalOpen(false)}
         initialTab={authModalTab}
       />
+      
     </>
   );
 }

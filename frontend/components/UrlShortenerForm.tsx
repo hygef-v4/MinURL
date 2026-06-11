@@ -342,18 +342,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
               </div>
 
               {/* Inline QR Code preview */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "20px",
-                  padding: "16px",
-                  background: "var(--accent-glow-soft)",
-                  border: "1px solid rgba(124, 58, 237, 0.12)",
-                  borderRadius: "var(--radius-md)",
-                  animation: "result-appear 0.5s 0.15s var(--transition-base) both",
-                }}
-              >
+              <div className="inline-qr-container">
                 {/* Canvas */}
                 <div
                   style={{

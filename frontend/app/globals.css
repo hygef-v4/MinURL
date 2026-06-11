@@ -1082,3 +1082,115 @@ body {
 .action-btn-primary-green:hover {
   background: #059669 !important;
 }
+
+/* ==================== Responsive Optimizations ==================== */
+
+/* Inline QR Container */
+.inline-qr-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: var(--accent-glow-soft);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: var(--radius-md);
+  animation: result-appear 0.5s 0.15s var(--transition-base) both;
+}
+
+@media (max-width: 480px) {
+  .inline-qr-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+}
+
+/* QR Code panel Options Grid */
+.qr-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 580px) {
+  .qr-options-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* QR Code panel Download Buttons */
+.qr-download-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+@media (max-width: 360px) {
+  .qr-download-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Small Viewport Navbar Adjustments */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 16px;
+    height: 60px;
+  }
+  .navbar-brand {
+    font-size: 18px;
+  }
+  .navbar-actions {
+    gap: 8px;
+  }
+  .navbar-btn-solid {
+    padding: 0 12px;
+    font-size: 13px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+  }
+  .navbar-btn-text {
+    font-size: 13px;
+  }
+}
+
+/* Compact History Action Buttons on Mobile */
+@media (max-width: 480px) {
+  .recent-link-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .recent-link-actions .inline-action-btn span {
+    display: none;
+  }
+  .recent-link-actions .inline-action-btn {
+    padding: 0 10px;
+    width: 36px;
+    height: 36px;
+  }
+  .recent-link-qr-panel {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+  .recent-link-qr-panel canvas {
+    width: 120px !important;
+    height: 120px !important;
+  }
+  .profile-container {
+    padding: 0 16px 60px !important;
+  }
+  .profile-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
