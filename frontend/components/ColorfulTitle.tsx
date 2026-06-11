@@ -36,17 +36,19 @@ function Letter({ char }: { char: string }) {
 
   return (
     <motion.span
-      style={{ display: "inline-block", whiteSpace: "pre" }}
+      style={{
+        display: "inline-block",
+        whiteSpace: "pre",
+        transition: fading
+          ? "color 2.4s cubic-bezier(0.4, 0, 0.2, 1)"
+          : "color 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)",
+        color: hoverColor ?? "inherit",
+      }}
       animate={{
-        color: fading ? "inherit" : (hoverColor ?? "inherit"),
         scale: hoverColor && !fading ? 1.08 : 1,
         textShadow: hoverColor && !fading ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
       }}
       transition={{
-        color: {
-          duration: fading ? 2.4 : 0.25,
-          ease: fading ? [0.4, 0.0, 0.2, 1] : [0.25, 0.1, 0.25, 1],
-        },
         scale: { duration: 0.25, ease: [0.34, 1.56, 0.64, 1] },
         textShadow: { duration: 0.25 },
       }}

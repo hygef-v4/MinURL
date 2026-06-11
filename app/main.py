@@ -2,10 +2,10 @@ from app.routes import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Khởi tạo app
+# Initialize app
 app = FastAPI(
     title="MinURL API", 
-    description="Hệ thống URL Shortener tốc độ cao", 
+    description="High-speed URL Shortener system", 
     version="1.0.0"
 )
 
