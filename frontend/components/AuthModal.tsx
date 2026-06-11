@@ -151,7 +151,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = "signin" }: Au
         {tab === "forgot" ? (
           <div style={{ marginBottom: "20px", textAlign: "center" }}>
             <h4 style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, margin: 0 }}>Reset Password</h4>
-            <p style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "6px", marginBottom: 0, lineScale: 1.4 }}>
+            <p style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "6px", marginBottom: 0, lineHeight: 1.4 }}>
               Enter your email address and we'll send you a recovery link.
             </p>
           </div>
