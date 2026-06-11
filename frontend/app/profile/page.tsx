@@ -4,12 +4,16 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { motion, AnimatePresence } from "framer-motion";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import HistoryList from "@/components/HistoryList";
+import { fetchUserHistory, ShortenResponse } from "@/lib/api";
 
 export default function ProfilePage() {
-  const { user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
+  const { user, session, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<"account" | "security" | "analytics">("account");
   const [displayName, setDisplayName] = useState("");
   const [totalUrls, setTotalUrls] = useState<number | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -22,6 +26,10 @@ export default function ProfilePage() {
   const [pwUpdating, setPwUpdating] = useState(false);
   const [pwErrorMsg, setPwErrorMsg] = useState("");
   const [pwSuccessMsg, setPwSuccessMsg] = useState("");
+
+  // History/Analytics States
+  const [history, setHistory] = useState<ShortenResponse[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Redirect if guest
   useEffect(() => {
@@ -53,6 +61,23 @@ export default function ProfilePage() {
         });
     }
   }, [user]);
+
+  // Fetch History for Analytics Tab
+  useEffect(() => {
+    if (session?.access_token) {
+      setHistoryLoading(true);
+      fetchUserHistory(session.access_token)
+        .then((dbHistory) => {
+          setHistory(dbHistory);
+        })
+        .catch((err) => {
+          console.error("Failed to load history on profile:", err);
+        })
+        .finally(() => {
+          setHistoryLoading(false);
+        });
+    }
+  }, [session, activeTab]); // Re-fetch on token/tab change
 
   if (authLoading || !user) {
     return (
@@ -120,6 +145,10 @@ export default function ProfilePage() {
     }
   }
 
+  function handleClearHistory() {
+    setHistory([]);
+  }
+
   return (
     <>
       <AnimatedBackground />
@@ -151,105 +180,208 @@ export default function ProfilePage() {
         </div>
       </nav>
 
-      <div className="profile-container">
-        <div className="glass-card" style={{ maxWidth: "550px", margin: "40px auto 0", animation: "fade-up 0.5s both" }}>
-          <div className="profile-header">
-            <h2>Your Profile</h2>
-            <p>Manage your account credentials and shortened links status.</p>
-          </div>
-
-          <div className="profile-stats-grid">
-            <div className="stat-card">
-              <span className="stat-num">{totalUrls !== null ? totalUrls : "—"}</span>
-              <span className="stat-lbl">Total Shortened URLs</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-num" style={{ fontSize: "14px", fontWeight: 700 }}>
-                {user.email?.split("@")[1]}
-              </span>
-              <span className="stat-lbl">Provider/Domain</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSave} className="profile-form">
-            <div className="form-group">
-              <label>Email Address</label>
-              <input type="text" value={user.email || ""} disabled className="input-disabled" />
-              <small>Your login email address cannot be changed.</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="displayName">Display Name</label>
-              <input
-                id="displayName"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter display name"
-              />
-            </div>
-
-            {errorMsg && <div className="alert-message error">{errorMsg}</div>}
-            {successMsg && <div className="alert-message success">{successMsg}</div>}
-
-            <div className="form-actions">
-              <button type="submit" className="save-btn" disabled={updating}>
-                {updating ? "Saving Changes..." : "Save Profile"}
-              </button>
-              <button
-                type="button"
-                className="save-btn"
-                style={{ marginTop: "10px", background: "transparent", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
-                onClick={async () => { await signOut(); router.push("/"); }}
-              >
-                Sign Out
-              </button>
-            </div>
-          </form>
+      <div 
+        className="profile-container" 
+        style={{ 
+          maxWidth: activeTab === "analytics" ? "900px" : "550px", 
+          margin: "40px auto 0",
+          transition: "max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}
+      >
+        {/* Animated Tabs Navigation */}
+        <div className="profile-tabs">
+          {[
+            { id: "account", label: "Account", icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
+            )},
+            { id: "security", label: "Security", icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            )},
+            { id: "analytics", label: "Analytics", icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" x2="18" y1="20" y2="10" /><line x1="12" x2="12" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="14" />
+              </svg>
+            )},
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`profile-tab ${activeTab === tab.id ? "active" : ""}`}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="profile-tab-indicator"
+                  className="profile-tab-indicator"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Change Password Card */}
-        <div className="glass-card" style={{ maxWidth: "550px", margin: "24px auto 0", animation: "fade-up 0.5s both" }}>
-          <div className="profile-header">
-            <h2>Change Password</h2>
-            <p>Update your account password. Must be at least 6 characters.</p>
-          </div>
+        {/* Tab Content Display */}
+        <AnimatePresence mode="wait">
+          {activeTab === "account" && (
+            <motion.div
+              key="account"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="glass-card" style={{ width: "100%", margin: 0 }}>
+                <div className="profile-header">
+                  <h2>Your Profile</h2>
+                  <p>Manage your account credentials and shortened links status.</p>
+                </div>
 
-          <form onSubmit={handleChangePassword} className="profile-form">
-            <div className="form-group">
-              <label htmlFor="newPassword">New Password</label>
-              <input
-                id="newPassword"
-                type="password"
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
-              />
-            </div>
+                <div className="profile-stats-grid">
+                  <div className="stat-card">
+                    <span className="stat-num">{totalUrls !== null ? totalUrls : "—"}</span>
+                    <span className="stat-lbl">Total Shortened URLs</span>
+                  </div>
+                  <div className="stat-card">
+                    <span className="stat-num" style={{ fontSize: "14px", fontWeight: 700 }}>
+                      {user.email?.split("@")[1]}
+                    </span>
+                    <span className="stat-lbl">Provider/Domain</span>
+                  </div>
+                </div>
 
-            <div className="form-group">
-              <label htmlFor="confirmNewPassword">Confirm New Password</label>
-              <input
-                id="confirmNewPassword"
-                type="password"
-                required
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Confirm new password"
-              />
-            </div>
+                <form onSubmit={handleSave} className="profile-form">
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input type="text" value={user.email || ""} disabled className="input-disabled" />
+                    <small>Your login email address cannot be changed.</small>
+                  </div>
 
-            {pwErrorMsg && <div className="alert-message error">{pwErrorMsg}</div>}
-            {pwSuccessMsg && <div className="alert-message success">{pwSuccessMsg}</div>}
+                  <div className="form-group">
+                    <label htmlFor="displayName">Display Name</label>
+                    <input
+                      id="displayName"
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Enter display name"
+                    />
+                  </div>
 
-            <div className="form-actions">
-              <button type="submit" className="save-btn" disabled={pwUpdating}>
-                {pwUpdating ? "Updating Password..." : "Update Password"}
-              </button>
-            </div>
-          </form>
-        </div>
+                  {errorMsg && <div className="alert-message error">{errorMsg}</div>}
+                  {successMsg && <div className="alert-message success">{successMsg}</div>}
+
+                  <div className="form-actions">
+                    <button type="submit" className="save-btn" disabled={updating}>
+                      {updating ? "Saving Changes..." : "Save Profile"}
+                    </button>
+                    <button
+                      type="button"
+                      className="save-btn"
+                      style={{ marginTop: "10px", background: "transparent", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
+                      onClick={async () => { await signOut(); router.push("/"); }}
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === "security" && (
+            <motion.div
+              key="security"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="glass-card" style={{ width: "100%", margin: 0 }}>
+                <div className="profile-header">
+                  <h2>Change Password</h2>
+                  <p>Update your account password. Must be at least 6 characters.</p>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="profile-form">
+                  <div className="form-group">
+                    <label htmlFor="newPassword">New Password</label>
+                    <input
+                      id="newPassword"
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="confirmNewPassword">Confirm New Password</label>
+                    <input
+                      id="confirmNewPassword"
+                      type="password"
+                      required
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  {pwErrorMsg && <div className="alert-message error">{pwErrorMsg}</div>}
+                  {pwSuccessMsg && <div className="alert-message success">{pwSuccessMsg}</div>}
+
+                  <div className="form-actions">
+                    <button type="submit" className="save-btn" disabled={pwUpdating}>
+                      {pwUpdating ? "Updating Password..." : "Update Password"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === "analytics" && (
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="profile-header" style={{ marginBottom: "20px" }}>
+                <h2>Analytics Dashboard</h2>
+                <p>Track click statistics, traffic sources, and geo breakdowns for your shortened links.</p>
+              </div>
+
+              {historyLoading ? (
+                <div className="glass-card" style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                  <div className="loading-spinner" />
+                  <p>Fetching click statistics & links...</p>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="glass-card" style={{ padding: "40px", textAlign: "center" }}>
+                  <p style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>
+                    You have not shortened any links yet.
+                  </p>
+                  <button className="save-btn" onClick={() => router.push("/")} style={{ width: "auto", padding: "0 24px" }}>
+                    Shorten Link Now
+                  </button>
+                </div>
+              ) : (
+                <HistoryList 
+                  history={history} 
+                  onClear={handleClearHistory} 
+                  token={session?.access_token} 
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <style>{`
@@ -258,6 +390,55 @@ export default function ProfilePage() {
           z-index: 1;
           padding: 0 24px 80px;
           font-family: "Inter", sans-serif;
+        }
+
+        .profile-tabs {
+          display: flex;
+          gap: 6px;
+          background: rgba(15, 23, 42, 0.03);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 4px;
+          margin-bottom: 28px;
+          backdrop-filter: blur(8px);
+          position: relative;
+        }
+
+        .profile-tab {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          height: 40px;
+          font-family: "Inter", sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-muted);
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          position: relative;
+          transition: color var(--transition-fast);
+          outline: none;
+        }
+
+        .profile-tab.active {
+          color: var(--text-primary);
+        }
+
+        .profile-tab:hover {
+          color: var(--text-primary);
+        }
+
+        .profile-tab-indicator {
+          position: absolute;
+          inset: 0;
+          background: var(--bg-secondary);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.015);
+          border: 1px solid var(--border-subtle);
+          border-radius: calc(var(--radius-md) - 2px);
+          z-index: -1;
         }
 
         .profile-header {
@@ -404,6 +585,19 @@ export default function ProfilePage() {
         .save-btn:disabled {
           opacity: 0.7;
           cursor: not-allowed;
+        }
+
+        .loading-spinner {
+          width: 24px;
+          height: 24px;
+          border: 2px solid var(--border-subtle);
+          border-top-color: var(--accent-primary);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </>

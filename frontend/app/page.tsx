@@ -204,7 +204,7 @@ export default function HomePage() {
         </div>
 
         {/* History / Recent Links */}
-        <HistoryList history={history} onClear={handleClearHistory} />
+        <HistoryList history={history} onClear={handleClearHistory} token={session?.access_token} />
 
         {/* Footer */}
         <footer className="footer">

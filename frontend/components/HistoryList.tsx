@@ -3,16 +3,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShortenResponse } from "@/lib/api";
+import AnalyticsPanel from "./AnalyticsPanel";
 
 interface Props {
   history: ShortenResponse[];
   onClear: () => void;
+  token?: string;
 }
 
-export default function HistoryList({ history, onClear }: Props) {
+export default function HistoryList({ history, onClear, token }: Props) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [sharedCode, setSharedCode] = useState<string | null>(null);
   const [activeQrCode, setActiveQrCode] = useState<string | null>(null);
+  const [activeAnalyticsCode, setActiveAnalyticsCode] = useState<string | null>(null);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -167,6 +170,28 @@ export default function HistoryList({ history, onClear }: Props) {
                       {item.long_url}
                     </span>
                   </div>
+                  {/* Click count badge */}
+                  {(item.clicks_count ?? 0) > 0 && (
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "var(--text-muted)",
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: "999px",
+                      padding: "2px 8px",
+                      marginTop: "4px",
+                      width: "fit-content",
+                    }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" x2="18" y1="20" y2="10" /><line x1="12" x2="12" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="14" />
+                      </svg>
+                      {item.clicks_count?.toLocaleString()} click{item.clicks_count !== 1 ? "s" : ""}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions toolbar */}
@@ -205,6 +230,25 @@ export default function HistoryList({ history, onClear }: Props) {
                       <rect x="3" y="14" width="7" height="7" />
                     </svg>
                     <span>QR Code</span>
+                  </motion.button>
+
+                  {/* Analytics button */}
+                  <motion.button
+                    type="button"
+                    className={`inline-action-btn${activeAnalyticsCode === item.short_code ? " active-analytics" : ""}`}
+                    onClick={() => {
+                      setActiveAnalyticsCode(prev => prev === item.short_code ? null : item.short_code);
+                      setActiveQrCode(null); // close QR when opening analytics
+                    }}
+                    style={{ height: "36px", padding: "0 12px" }}
+                    title="View analytics"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" x2="18" y1="20" y2="10" /><line x1="12" x2="12" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="14" />
+                    </svg>
+                    <span>Analytics</span>
                   </motion.button>
 
                   <motion.button
@@ -307,6 +351,17 @@ export default function HistoryList({ history, onClear }: Props) {
                       </button>
                     </div>
                   </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Analytics accordion panel */}
+              <AnimatePresence>
+                {activeAnalyticsCode === item.short_code && (
+                  <AnalyticsPanel
+                    key={`analytics-${item.short_code}`}
+                    shortCode={item.short_code}
+                    token={token}
+                  />
                 )}
               </AnimatePresence>
             </motion.div>

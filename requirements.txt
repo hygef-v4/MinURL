@@ -5,3 +5,4 @@ python-dotenv==1.0.1
 pydantic==2.13.4
 httpx==0.28.1
 typing_extensions==4.15.0
+user-agents==2.2.0

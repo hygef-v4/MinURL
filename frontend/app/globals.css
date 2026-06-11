@@ -1086,6 +1086,11 @@ body {
   border-color: rgba(16, 185, 129, 0.25);
   color: var(--success);
 }
+.inline-action-btn.active-analytics {
+  background: var(--accent-glow-soft);
+  border-color: var(--border-accent);
+  color: var(--accent-primary);
+}
 .action-btn-primary-green {
   background: #10b981 !important;
   color: white !important;
