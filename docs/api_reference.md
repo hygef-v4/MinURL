@@ -57,7 +57,7 @@ create index idx_urls_short_code on public.urls(short_code);
 create index idx_urls_user_id on public.urls(user_id);
 create index idx_clicks_url_id on public.clicks(url_id);
 
--- RPC for incrementing clicks_count atomically
+-- RPC for incrementing clicks_count atomically (security definer bypasses RLS)
 create or replace function public.increment_clicks(row_id bigint)
 returns void as $$
 begin
@@ -65,7 +65,17 @@ begin
   set clicks_count = coalesce(clicks_count, 0) + 1
   where id = row_id;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;
+
+-- Row Level Security (RLS) Policies
+-- Allow anyone (anon) to insert click records
+alter table public.clicks enable row level security;
+create policy "Allow anonymous inserts to clicks" on public.clicks for insert to anon with check (true);
+create policy "Allow anonymous selects on clicks" on public.clicks for select to anon using (true);
+
+alter table public.urls enable row level security;
+create policy "Allow anonymous inserts to urls" on public.urls for insert to anon with check (true);
+create policy "Allow anonymous selects on urls" on public.urls for select to anon using (true);
 ```
 
 ---
