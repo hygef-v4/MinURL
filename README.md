@@ -15,6 +15,9 @@
 
 - 🚀 **Blazing Fast Redirection:** Shortens URLs using a Base62 encoding algorithm mapped to PostgreSQL auto-increment IDs for O(1) primary key lookups.
 - 🎨 **Glassmorphism Design:** Beautiful dark-mode user interface with smooth animations powered by Framer Motion.
+- ✍️ **Custom Alias Support:** Users can define their own personalized short code links (e.g., `ytb`, `my-link`) with length and character validation.
+- 🛡️ **Safe Browsing Integration:** Built-in URL safety checker using Google Safe Browsing API and a local domain blacklist to block malware and phishing links.
+- ⏳ **Rate Limiting:** Protects the shortening endpoint from abuse using `slowapi` rate limiter (limit of 10 requests per minute per IP address).
 - 🔐 **Authentication & History:** Integrates Supabase Auth (Sign In / Sign Up).
   - *Guests:* Shortening history is saved locally in `LocalStorage` (up to 10 URLs).
   - *Members:* History is synced directly with the Supabase database (displays the 20 most recent links).
@@ -93,11 +96,12 @@ Open your terminal at the project root directory and follow these steps:
    ```
 
 3. **Configure environment variables:**
-   Create a `.env` file at the root of the project and supply your Supabase keys:
+   Create a `.env` file at the root of the project and supply your keys:
    ```env
    SUPABASE_URL=https://<your-supabase-project>.supabase.co
    SUPABASE_KEY=<your-supabase-anon-key>
    BASE_DOMAIN=http://localhost:8000
+   SAFE_BROWSING_API_KEY=<your-google-safe-browsing-api-key>
    ```
 
 4. **Run the Backend server:**
