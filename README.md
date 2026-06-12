@@ -18,6 +18,7 @@
 - ✍️ **Custom Alias Support:** Users can define their own personalized short code links (e.g., `ytb`, `my-link`) with length and character validation.
 - 🛡️ **Safe Browsing Integration:** Built-in URL safety checker using Google Safe Browsing API and a local domain blacklist to block malware and phishing links.
 - ⏳ **Rate Limiting:** Protects the shortening endpoint from abuse using `slowapi` rate limiter (limit of 10 requests per minute per IP address).
+- 📊 **Advanced Analytics:** Real-time click tracking, gathering referrers, locations (country/city), browsers, and devices used by the visitors.
 - 🔐 **Authentication & History:** Integrates Supabase Auth (Sign In / Sign Up).
   - *Guests:* Shortening history is saved locally in `LocalStorage` (up to 10 URLs).
   - *Members:* History is synced directly with the Supabase database (displays the 20 most recent links).
@@ -33,9 +34,11 @@
 - **Supabase Client**: Client library for connecting to PostgreSQL database and Supabase Auth.
 - **Uvicorn**: Lightweight ASGI web server for Python applications.
 - **Pydantic**: Fast data validation and serialization.
+- **SlowAPI**: Rate limiting extension for FastAPI.
+- **Pytest**: Framework for writing testing code.
 
 ### Frontend
-- **Next.js 16 (App Router)** & **React 19**
+- **Next.js 14 (App Router)** & **React 18**
 - **TypeScript**: Typed JavaScript for robust development.
 - **Vanilla CSS**: Styled using CSS custom properties (variables) for smooth themes and modern gradients.
 - **Framer Motion**: Production-ready animation library for React.
@@ -50,21 +53,26 @@ MinURL/
 ├── api/
 │   └── index.py            # Entrypoint for deploying FastAPI to Vercel Serverless Functions
 ├── app/
-│   ├── config.py           # Configuration management and backend environment variables
+│   ├── auth.py             # User authentication and API key verification
+│   ├── config.py           # Configuration management and environment variables
 │   ├── database.py         # Supabase Client initialization
-│   ├── main.py             # FastAPI app setup and CORS middleware
-│   ├── routes.py           # API endpoints and redirection routes logic
-│   ├── schemas.py          # Pydantic schemas (Request/Response validation)
+│   ├── main.py             # FastAPI app setup, exception handlers, and CORS middleware
+│   ├── rate_limiter.py     # SlowAPI rate limiting configuration setup
+│   ├── routes.py           # API endpoints (shorten, redirect, analytics, history)
+│   ├── safe_browsing.py    # URL safety checker (Google API + local blacklist)
+│   ├── schemas.py          # Pydantic schemas (Request/Response validation models)
 │   └── utils.py            # Base62 encoding/decoding helper functions
 ├── docs/
-│   └── api_reference.md    # Detailed API documentation and database schema setup
+│   └── api_reference.md    # Detailed API documentation and database SQL schema setup
 ├── frontend/
-│   ├── app/                # Next.js App Router (Pages, Layouts, Profile)
+│   ├── app/                # Next.js App Router (Pages, Layouts)
 │   ├── components/         # Reusable React UI components (Form, QR Panel, Auth Modal, etc.)
-│   ├── lib/                # API helpers, Auth Context, and Supabase client
+│   ├── lib/                # API fetch helpers, Auth Context, and Supabase client
 │   └── public/             # Static files (Icons, logos)
-├── requirement.txt         # Full dependencies lock file
+├── tests/
+│   └── test_api.py         # Pytest test cases for the backend APIs
 ├── requirements.txt        # Core Python package dependencies
+├── requirement.txt         # Full dependencies lock file
 ├── vercel.json             # Vercel rewrite configuration for routing requests
 └── .env                    # Backend environment variables
 ```
@@ -74,7 +82,7 @@ MinURL/
 ## ⚙️ Local Setup Guide
 
 ### 1. Database Setup
-Please refer to the [Database & API Reference](file:///f:/code/git/MinURL/docs/api_reference.md#2-database-setup-supabase) guide to initialize the `urls` table in your Supabase database.
+Please refer to the [Database & API Reference](file:///f:/code/git/MinURL/docs/api_reference.md#2-database-setup-supabase) guide to initialize the `urls` and `clicks` tables, along with security policies in your Supabase database.
 
 ### 2. Backend Setup (FastAPI)
 Open your terminal at the project root directory and follow these steps:
@@ -110,6 +118,27 @@ Open your terminal at the project root directory and follow these steps:
    ```
    *Backend server running at: [http://localhost:8000](http://localhost:8000)*
    *Swagger UI interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)*
+
+---
+
+## 🧪 Testing
+
+MinURL includes automated tests for the FastAPI backend APIs using `pytest`.
+
+To run the backend tests:
+1. Ensure your virtual environment is activated:
+   ```bash
+   # Windows (Powershell)
+   .venv\Scripts\Activate.ps1
+
+   # Linux/macOS
+   source .venv/bin/activate
+   ```
+2. Execute pytest via Python module:
+   ```bash
+   python -m pytest
+   ```
+This will automatically discover and run all test scenarios within the `tests/` directory (such as endpoint responses, formatting validations, and mock testing).
 
 ---
 
@@ -149,6 +178,7 @@ Make sure to set the following **Environment Variables** in the Vercel Project S
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
 - `BASE_DOMAIN` *(Set to the live URL of your deployed application)*
+- `SAFE_BROWSING_API_KEY`
 
 ### Deploy Frontend Next.js
 You can deploy the `frontend/` directory as a separate Vercel application. Set the **Root Directory** settings to `frontend` and add these environment variables:
