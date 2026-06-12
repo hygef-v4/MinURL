@@ -23,6 +23,7 @@ function isValidUrl(url: string): boolean {
 export default function UrlShortenerForm({ onSuccess }: Props) {
   const { session } = useAuth();
   const [url, setUrl] = useState("");
+  const [customAlias, setCustomAlias] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ShortenResponse | null>(null);
@@ -69,9 +70,25 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
       return;
     }
 
+    const aliasTrimmed = customAlias.trim();
+    if (aliasTrimmed) {
+      if (aliasTrimmed.length < 3) {
+        setError("Custom alias must be at least 3 characters long.");
+        return;
+      }
+      if (aliasTrimmed.length > 30) {
+        setError("Custom alias must be at most 30 characters long.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(aliasTrimmed)) {
+        setError("Custom alias can only contain letters, numbers, hyphens (-) and underscores (_).");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const res = await shortenUrl(trimmed, session?.access_token);
+      const res = await shortenUrl(trimmed, session?.access_token, aliasTrimmed || undefined);
       setResult(res);
       onSuccess(res);
     } catch (err) {
@@ -122,6 +139,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
   function handleReset() {
     setResult(null);
     setUrl("");
+    setCustomAlias("");
     setError("");
   }
 
@@ -237,7 +255,7 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
             <input
               id="url-input"
               type="url"
-              className={`url-input${error ? " error" : ""}`}
+              className={`url-input${error && !error.includes("Alias") ? " error" : ""}`}
               value={result ? result.long_url : url}
               onChange={(e) => {
                 setUrl(e.target.value);
@@ -249,6 +267,45 @@ export default function UrlShortenerForm({ onSuccess }: Props) {
               disabled={loading || !!result}
               style={{ width: "100%" }}
             />
+          </div>
+
+          {/* Custom Alias Input */}
+          <div style={{ marginBottom: "20px" }}>
+            <label htmlFor="alias-input" className="form-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              Custom Alias (Optional)
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                id="alias-input"
+                type="text"
+                className={`url-input${error && error.includes("Alias") ? " error" : ""}`}
+                value={result ? result.short_code : customAlias}
+                onChange={(e) => {
+                  setCustomAlias(e.target.value);
+                  if (error) setError("");
+                }}
+                placeholder="my-custom-link"
+                autoComplete="off"
+                spellCheck={false}
+                disabled={loading || !!result}
+                style={{ flex: 1 }}
+              />
+            </div>
           </div>
 
           {/* Short URL Result Input */}

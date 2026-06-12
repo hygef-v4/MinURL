@@ -28,21 +28,46 @@ export interface URLAnalyticsResponse {
   daily_clicks: DailyClick[];
 }
 
-export async function shortenUrl(longUrl: string, token?: string): Promise<ShortenResponse> {
+async function parseError(res: Response, defaultMsg: string): Promise<Error> {
+  try {
+    const err = await res.json();
+    if (err && err.detail) {
+      if (typeof err.detail === "string") {
+        return new Error(err.detail);
+      }
+      if (Array.isArray(err.detail)) {
+        const msg = err.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+        return new Error(msg);
+      }
+      if (typeof err.detail === "object") {
+        return new Error(err.detail.msg || err.detail.message || JSON.stringify(err.detail));
+      }
+    }
+    return new Error(err?.message || defaultMsg);
+  } catch {
+    return new Error(defaultMsg);
+  }
+}
+
+export async function shortenUrl(longUrl: string, token?: string, customAlias?: string): Promise<ShortenResponse> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  const body: any = { long_url: longUrl };
+  if (customAlias) {
+    body.custom_alias = customAlias;
+  }
+
   const res = await fetch(`${API_URL}/api/v1/shorten`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ long_url: longUrl }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to shorten URL. Please try again.");
+    throw await parseError(res, "Failed to shorten URL. Please try again.");
   }
 
   return res.json();
@@ -58,8 +83,7 @@ export async function fetchUserHistory(token: string): Promise<ShortenResponse[]
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to load URL history.");
+    throw await parseError(res, "Failed to load URL history.");
   }
 
   return res.json();
@@ -80,8 +104,7 @@ export async function fetchUrlAnalytics(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to load analytics.");
+    throw await parseError(res, "Failed to load analytics.");
   }
 
   return res.json();
