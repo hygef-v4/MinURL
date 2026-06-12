@@ -1,19 +1,30 @@
 from typing import Optional, List
 from datetime import date, timedelta
 from collections import Counter
+import re
+import qrcode
+import io
 
-from fastapi import APIRouter, HTTPException, Header, Request, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
+from fastapi.responses import RedirectResponse, StreamingResponse
 from postgrest.exceptions import APIError
 from user_agents import parse as ua_parse
 
-from app.utils import encode_base62, decode_base62
+from app.utils import encode_base62
 from app.database import supabase
-from app.schemas import URLRequest, URLResponse, AnalyticsResponse, TopItem, DailyClick
+from app.schemas import (
+    URLRequest, URLResponse, AnalyticsResponse, TopItem, DailyClick,
+    APIKeyCreate, APIKeyResponse
+)
 from app.config import settings, logger
+from app.rate_limiter import limiter
+from app.safe_browsing import check_url_safety
+from app.auth import get_current_user_id, get_optional_user_id, generate_new_api_key
 
 router = APIRouter()
 
+RE_CUSTOM_ALIAS = re.compile(r"^[a-zA-Z0-9_-]+$")
+RESERVED_ALIASES = {"health", "api", "favicon.ico", "robots.txt", "docs", "redoc", "openapi.json"}
 
 # ──────────────────────────────────────────────────────────────
 # Helpers
@@ -101,11 +112,6 @@ def _log_click(url_id: int, click_data: dict) -> None:
     try:
         supabase.table("clicks").insert(click_data).execute()
         # Use rpc to atomically increment clicks_count.
-        # Requires a SQL function in Supabase:
-        #   CREATE OR REPLACE FUNCTION increment_clicks(row_id bigint)
-        #   RETURNS void LANGUAGE sql AS $$
-        #     UPDATE urls SET clicks_count = clicks_count + 1 WHERE id = row_id;
-        #   $$;
         supabase.rpc("increment_clicks", {"row_id": url_id}).execute()
     except Exception as e:
         # Non-critical – log and swallow so it never breaks redirects
@@ -122,62 +128,89 @@ def health_check():
 
 
 @router.post("/api/v1/shorten", response_model=URLResponse, tags=["URL Shortener"])
-def shorten_url(request: URLRequest, authorization: Optional[str] = Header(None)):
+@limiter.limit("10/minute")
+async def shorten_url(
+    request: Request,
+    url_req: URLRequest,
+    user_id: Optional[str] = Depends(get_optional_user_id)
+):
     try:
-        url_string = str(request.long_url)
+        url_string = str(url_req.long_url)
 
-        user_id = None
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.split(" ")[1]
-            try:
-                user_resp = supabase.auth.get_user(token)
-                if user_resp and user_resp.user:
-                    user_id = user_resp.user.id
-            except Exception as auth_err:
-                logger.warning(f"Token verification failed: {str(auth_err)}")
+        # 1. Kiểm tra an toàn URL
+        is_safe = await check_url_safety(url_string)
+        if not is_safe:
+            raise HTTPException(
+                status_code=400, 
+                detail="This link is unsafe (listed in malicious warnings blacklist)."
+            )
 
-        insert_data = {"long_url": url_string}
-        if user_id:
-            insert_data["user_id"] = user_id
+        # 2. Xử lý Custom Alias nếu có
+        custom_alias = url_req.custom_alias
+        if custom_alias:
+            custom_alias = custom_alias.strip()
+            if not RE_CUSTOM_ALIAS.match(custom_alias):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Alias can only contain letters, numbers, hyphens (-) and underscores (_)."
+                )
+            if custom_alias.lower() in RESERVED_ALIASES:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="This alias is a reserved system keyword and cannot be used."
+                )
+            
+            # Kiểm tra xem đã tồn tại chưa
+            existing = supabase.table("urls").select("id").eq("short_code", custom_alias).execute()
+            if existing.data:
+                raise HTTPException(
+                    status_code=409, 
+                    detail="This custom alias is already in use."
+                )
+            
+            insert_data = {
+                "long_url": url_string,
+                "short_code": custom_alias
+            }
+            if user_id:
+                insert_data["user_id"] = user_id
+                
+            response = supabase.table("urls").insert(insert_data).execute()
+            if not response.data:
+                logger.error("Supabase error: No data returned on insert.")
+                raise HTTPException(status_code=500, detail="Failed to save URL.")
+            
+            short_code = custom_alias
+        else:
+            # Tạo ngẫu nhiên bằng Base62 sau khi chèn dòng
+            insert_data = {"long_url": url_string}
+            if user_id:
+                insert_data["user_id"] = user_id
 
-        response = supabase.table("urls").insert(insert_data).execute()
-        if not response.data:
-            logger.error("Supabase error: No data returned on insert.")
-            raise HTTPException(status_code=500, detail="Unable to save URL.")
+            response = supabase.table("urls").insert(insert_data).execute()
+            if not response.data:
+                logger.error("Supabase error: No data returned on insert.")
+                raise HTTPException(status_code=500, detail="Failed to save URL.")
 
-        db_id = response.data[0]["id"]
-        short_code = encode_base62(db_id)
+            db_id = response.data[0]["id"]
+            short_code = encode_base62(db_id)
 
-        supabase.table("urls").update({"short_code": short_code}).eq("id", db_id).execute()
+            supabase.table("urls").update({"short_code": short_code}).eq("id", db_id).execute()
 
         return URLResponse(
             short_code=short_code,
             short_url=f"{settings.BASE_DOMAIN}/{short_code}",
             long_url=url_string,
+            qr_code_url=f"{settings.BASE_DOMAIN}/api/v1/qrcode/{short_code}"
         )
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
-        raise handle_database_error(e, "Unable to shorten URL")
+        raise handle_database_error(e, "Failed to shorten URL")
 
 
 @router.get("/api/v1/history", response_model=List[URLResponse], tags=["URL Shortener"])
-def get_user_history(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header.")
-
-    token = authorization.split(" ")[1]
-    try:
-        user_resp = supabase.auth.get_user(token)
-        if not user_resp or not user_resp.user:
-            raise HTTPException(status_code=401, detail="Invalid token.")
-        user_id = user_resp.user.id
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token verification failed in history endpoint: {str(e)}")
-        raise HTTPException(status_code=401, detail="Token is invalid or has expired.")
-
+async def get_user_history(user_id: str = Depends(get_current_user_id)):
     try:
         response = (
             supabase.table("urls")
@@ -197,50 +230,38 @@ def get_user_history(authorization: Optional[str] = Header(None)):
                 short_url=f"{settings.BASE_DOMAIN}/{short_code}",
                 long_url=item["long_url"],
                 clicks_count=item.get("clicks_count") if item.get("clicks_count") is not None else 0,
+                qr_code_url=f"{settings.BASE_DOMAIN}/api/v1/qrcode/{short_code}"
             ))
         return urls_list
-    except HTTPException as http_ex:
-        raise http_ex
     except Exception as e:
-        raise handle_database_error(e, "Unable to retrieve URL history")
+        raise handle_database_error(e, "Failed to retrieve URL history")
 
 
 @router.get("/api/v1/analytics/{short_code}", response_model=AnalyticsResponse, tags=["Analytics"])
-def get_analytics(short_code: str, authorization: Optional[str] = Header(None)):
+async def get_analytics(
+    short_code: str, 
+    user_id: Optional[str] = Depends(get_optional_user_id)
+):
     """
     Returns aggregated click analytics for a given short_code.
     Anonymous links are accessible without a token; user-owned links require owner auth.
     """
-    # Decode short_code → db row id
-    try:
-        db_id = decode_base62(short_code)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid URL format.")
-
-    # Fetch URL record to verify existence + optionally check ownership
-    url_resp = supabase.table("urls").select("id, user_id, clicks_count").eq("id", db_id).execute()
+    # Lấy thông tin URL từ short_code trực tiếp
+    url_resp = supabase.table("urls").select("id, user_id, clicks_count").eq("short_code", short_code).execute()
     if not url_resp.data:
-        raise HTTPException(status_code=404, detail="Short URL not found.")
+        raise HTTPException(status_code=404, detail="Shortened link not found.")
 
     url_row = url_resp.data[0]
+    db_id = url_row["id"]
     url_user_id = url_row.get("user_id")
     total_clicks = url_row.get("clicks_count") if url_row.get("clicks_count") is not None else 0
 
-    # If URL belongs to a user, require that user's auth token
+    # Nếu URL có chủ sở hữu, yêu cầu xác thực đúng chủ
     if url_user_id:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Authentication required to view analytics.")
-        token = authorization.split(" ")[1]
-        try:
-            user_resp = supabase.auth.get_user(token)
-            if not user_resp or not user_resp.user or user_resp.user.id != url_user_id:
-                raise HTTPException(status_code=403, detail="You don't have access to this URL's analytics.")
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=401, detail="Token is invalid or has expired.")
+        if not user_id or user_id != url_user_id:
+            raise HTTPException(status_code=403, detail="You do not have permission to view analytics for this link.")
 
-    # Fetch click records
+    # Lấy clicks
     clicks_resp = (
         supabase.table("clicks")
         .select("clicked_at, referrer, country, device, browser")
@@ -251,14 +272,14 @@ def get_analytics(short_code: str, authorization: Optional[str] = Header(None)):
     )
     clicks = clicks_resp.data or []
 
-    # --- Today's clicks ---
+    # --- Clicks hôm nay ---
     today_str = date.today().isoformat()
     clicks_today = sum(
         1 for c in clicks
         if (c.get("clicked_at") or "").startswith(today_str)
     )
 
-    # --- Aggregations ---
+    # --- Thống kê gom nhóm ---
     def top_items(field: str, n: int = 5) -> List[TopItem]:
         counter = Counter(c.get(field) or "Unknown" for c in clicks)
         return [TopItem(label=label, count=cnt) for label, cnt in counter.most_common(n)]
@@ -268,7 +289,7 @@ def get_analytics(short_code: str, authorization: Optional[str] = Header(None)):
     top_devices   = top_items("device")
     top_browsers  = top_items("browser")
 
-    # --- Daily clicks for last 7 days ---
+    # --- Thống kê 7 ngày qua ---
     daily_map: dict[str, int] = {}
     for i in range(6, -1, -1):
         day = (date.today() - timedelta(days=i)).isoformat()
@@ -292,24 +313,138 @@ def get_analytics(short_code: str, authorization: Optional[str] = Header(None)):
     )
 
 
+@router.get("/api/v1/qrcode/{short_code}", tags=["URL Shortener"])
+async def get_qrcode(short_code: str):
+    """Sinh mã QR cho short_code và trả về file ảnh PNG trực tiếp"""
+    # 1. Kiểm tra sự tồn tại trong DB
+    url_resp = supabase.table("urls").select("id").eq("short_code", short_code).execute()
+    if not url_resp.data:
+        raise HTTPException(status_code=404, detail="Shortened link not found.")
+            
+    # 2. Sinh mã QR
+    target_url = f"{settings.BASE_DOMAIN}/{short_code}"
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(target_url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Lưu vào buffer bộ nhớ
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")  # type: ignore
+    buf.seek(0)
+
+    
+    return StreamingResponse(buf, media_type="image/png")
+
+
+# ──────────────────────────────────────────────────────────────
+# Developer API Keys Routes
+# ──────────────────────────────────────────────────────────────
+
+@router.post("/api/v1/api-keys", response_model=APIKeyResponse, tags=["API Keys"])
+async def create_api_key(
+    payload: APIKeyCreate,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Tạo API Key mới cho lập trình viên"""
+    new_key = generate_new_api_key()
+    insert_data = {
+        "key_value": new_key,
+        "user_id": user_id,
+        "name": payload.name,
+        "is_active": True
+    }
+    try:
+        response = supabase.table("api_keys").insert(insert_data).execute()
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Failed to create API Key.")
+        
+        row = response.data[0]
+        return APIKeyResponse(
+            id=row["id"],
+            key_value=row["key_value"],
+            name=row["name"],
+            is_active=row["is_active"],
+            created_at=str(row["created_at"])
+        )
+    except Exception as e:
+        raise handle_database_error(e, "Failed to create API Key")
+
+
+@router.get("/api/v1/api-keys", response_model=List[APIKeyResponse], tags=["API Keys"])
+async def list_api_keys(
+    user_id: str = Depends(get_current_user_id)
+):
+    """Liệt kê toàn bộ API Key của người dùng"""
+    try:
+        response = supabase.table("api_keys").select("*").eq("user_id", user_id).execute()
+        keys_list = []
+        for row in response.data:
+            keys_list.append(APIKeyResponse(
+                id=row["id"],
+                key_value=row["key_value"],
+                name=row["name"],
+                is_active=row["is_active"],
+                created_at=str(row["created_at"])
+            ))
+        return keys_list
+    except Exception as e:
+        raise handle_database_error(e, "Failed to list API Keys")
+
+
+@router.delete("/api/v1/api-keys/{key_id}", tags=["API Keys"])
+async def delete_api_key(
+    key_id: int,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Xóa API Key"""
+    try:
+        # Kiểm tra quyền sở hữu
+        res = supabase.table("api_keys").select("user_id").eq("id", key_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="API Key does not exist.")
+        if res.data[0]["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="You do not have permission to delete this API Key.")
+            
+        supabase.table("api_keys").delete().eq("id", key_id).execute()
+        return {"status": "ok", "message": "API Key deleted successfully."}
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        raise handle_database_error(e, "Failed to delete API Key")
+
+
+# ──────────────────────────────────────────────────────────────
+# Short Code Redirect Route
+# ──────────────────────────────────────────────────────────────
+
 @router.get("/{short_code}", tags=["URL Shortener"])
-def redirect_url(short_code: str, request: Request, background_tasks: BackgroundTasks):
-    if short_code in ("favicon.ico", "robots.txt", "api"):
+@limiter.limit("120/minute")
+async def redirect_url(
+    short_code: str, 
+    request: Request, 
+    background_tasks: BackgroundTasks
+):
+    if short_code in RESERVED_ALIASES:
         raise HTTPException(status_code=404, detail="URL not found.")
 
     try:
-        db_id = decode_base62(short_code)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid URL format.")
-
-    try:
-        response = supabase.table("urls").select("long_url").eq("id", db_id).execute()
+        # Lấy thông tin long_url và db_id bằng query short_code trực tiếp
+        response = supabase.table("urls").select("id, long_url").eq("short_code", short_code).execute()
         if not response.data:
-            raise HTTPException(status_code=404, detail="URL not found.")
+            raise HTTPException(status_code=404, detail="Shortened link not found.")
 
+        db_id = response.data[0]["id"]
         long_url = response.data[0]["long_url"]
 
-        # Schedule click logging as a background task so redirect is instant
+        # Ghi nhận log click chạy ngầm
         click_data = _extract_click_info(request, db_id)
         background_tasks.add_task(_log_click, db_id, click_data)
 
@@ -317,4 +452,4 @@ def redirect_url(short_code: str, request: Request, background_tasks: Background
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
-        raise handle_database_error(e, "Unable to redirect URL")
+        raise handle_database_error(e, "Failed to redirect URL")
